@@ -7,9 +7,9 @@ import re
 import uuid
 import time
 import json
+import requests
 from collections import defaultdict
 from pytz import UTC
-from requests import request, ConnectionError
 
 from django.conf import settings
 from django.contrib.auth import logout, authenticate, login
@@ -934,15 +934,17 @@ def login_user(request, error=""):  # pylint: disable-msg=too-many-statements,un
     })  # TODO: this should be status code 400  # pylint: disable=fixme
 
 
-def logout_portal(user_mail):
-    try:
-        user = models.DjangoStorage.user.objects.get(uid=user_mail)
-        response = request('POST', settings.IONISX_AUTH['SYNC_LOGOUT_URL'],
-            params={ 'access_token': user.extra_data['access_token'] })
-    except ConnectionError as err:
-        log.warning(err)
-    except Exception as err:
-        log.warning(err)
+def logout_portal(request):
+    if request.user.is_authenticated():
+        user = request.user
+        social_data = models.DjangoStorage.user.get_social_auth_for_user(user)[0]
+        try:
+            requests.post(
+                settings.IONISX_AUTH.get('SYNC_LOGOUT_URL'),
+                headers={'Authorization': 'Bearer {0}'.format(social_data.extra_data['access_token'])}
+            )
+        except requests.ConnectionError as err:
+            log.warning(err)
 
 
 @ensure_csrf_cookie
@@ -959,9 +961,8 @@ def logout_user(request):
     else:
         user_mail = request.user.email
 
+    logout_portal(request)
     logout(request)
-    if user_mail:
-        logout_portal(user_mail)
     if settings.FEATURES.get('AUTH_USE_CAS'):
         target = reverse('cas-logout')
     else:
