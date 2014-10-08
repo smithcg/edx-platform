@@ -49,20 +49,27 @@ class PortalSynchronizerMiddleware(object):
                     log.warning(err)
                     return
 
-                user_data = r.json()
-                if user_data:
-                    _id = user_data['_id']
-                    email = portal.get_primary_email(user_data['emails'])
-                    username = user_data['username']
-                    name = user_data['name']
+                body = r.json()
 
-                    if (user.email != email or user.username != user_data['username']):
+                if r.status_code != 200:
+                    if body and u'error' in body and u'redirectTo' in body[u'error']:
+                        return redirect(body[u'error'][u'redirectTo'])
+                    else:
+                        return logout(request)
+
+                if body:
+                    _id = body['_id']
+                    email = portal.get_primary_email(body['emails'])
+                    username = body['username']
+                    name = body['name']
+
+                    if (user.email != email or user.username != body['username']):
                         log.info('User {} needs to be updated'.format(_id))
                         user.email = email
                         user.username = username
                         user.save()
 
-                    if user.profile.name != user_data['name']:
+                    if user.profile.name != body['name']:
                         log.info('User profile for {} needs to be updated'.format(_id))
                         user.profile.name = name
                         user.profile.save()
