@@ -340,35 +340,38 @@ def signin_user(request):
     """
     This view will display the non-modal login form
     """
-    if not settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH'):
-        if (settings.FEATURES['AUTH_USE_CERTIFICATES'] and
-                external_auth.views.ssl_get_cert_from_request(request)):
-            # SSL login doesn't require a view, so redirect
-            # branding and allow that to process the login if it
-            # is enabled and the header is in the request.
-            return external_auth.views.redirect_with_get('root', request.GET)
-        if settings.FEATURES.get('AUTH_USE_CAS'):
-            # If CAS is enabled, redirect auth handling to there
-            return redirect(reverse('cas-login'))
-        if request.user.is_authenticated():
-            return redirect(reverse('dashboard'))
+    if request.user.is_authenticated():
+        return redirect(reverse('dashboard'))
 
-        context = {
-            'course_id': request.GET.get('course_id'),
-            'enrollment_action': request.GET.get('enrollment_action'),
-            # Bool injected into JS to submit form if we're inside a running third-
-            # party auth pipeline; distinct from the actual instance of the running
-            # pipeline, if any.
-            'pipeline_running': 'true' if pipeline.running(request) else 'false',
-            'platform_name': microsite.get_value(
-                'platform_name',
-                settings.PLATFORM_NAME
-            ),
-        }
+    if settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH'):
+        # Redirect to IONISx, we don't want the registration form.
+        redirect_uri = reverse('social:begin', args=('portal-oauth2',))
+        return external_auth.views.redirect_with_get(redirect_uri, request.GET, do_reverse=False)
 
-        return render_to_response('login.html', context)
-    else:
-        return redirect("/auth/login/portal-oauth2/?auth_entry=login")
+    if (settings.FEATURES['AUTH_USE_CERTIFICATES'] and
+            external_auth.views.ssl_get_cert_from_request(request)):
+        # SSL login doesn't require a view, so redirect
+        # branding and allow that to process the login if it
+        # is enabled and the header is in the request.
+        return external_auth.views.redirect_with_get('root', request.GET)
+    if settings.FEATURES.get('AUTH_USE_CAS'):
+        # If CAS is enabled, redirect auth handling to there
+        return redirect(reverse('cas-login'))
+
+    context = {
+        'course_id': request.GET.get('course_id'),
+        'enrollment_action': request.GET.get('enrollment_action'),
+        # Bool injected into JS to submit form if we're inside a running third-
+        # party auth pipeline; distinct from the actual instance of the running
+        # pipeline, if any.
+        'pipeline_running': 'true' if pipeline.running(request) else 'false',
+        'platform_name': microsite.get_value(
+            'platform_name',
+            settings.PLATFORM_NAME
+        ),
+    }
+
+    return render_to_response('login.html', context)
 
 @ensure_csrf_cookie
 def register_user(request, extra_context=None):
@@ -380,7 +383,13 @@ def register_user(request, extra_context=None):
 
     if settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH'):
         # Redirect to IONISx, we don't want the registration form.
-        return external_auth.views.redirect_with_get('/auth/login/portal-oauth2', request.GET, do_reverse=False)
+        get = request.GET.copy()
+
+        if 'course_id' in request.GET:
+            get.update({ 'next': reverse('about_course', kwargs={ 'course_id': unicode(request.GET.get('course_id')) }) })
+
+        redirect_uri = reverse('social:begin', args=('portal-oauth2',))
+        return external_auth.views.redirect_with_get(redirect_uri, get, do_reverse=False)
 
     if settings.FEATURES.get('AUTH_USE_CERTIFICATES_IMMEDIATE_SIGNUP'):
         # Redirect to branding to process their certificate if SSL is enabled
@@ -942,7 +951,8 @@ def _get_course_enrollment_domain(course_id):
 @never_cache
 @ensure_csrf_cookie
 def auth_with_no_login(request):
-    return redirect("/auth/login/portal-oauth2/?auth_entry=login&next={0}".format(request.REQUEST.get('next', '')))
+    redirect_uri = reverse('social:begin', args=('portal-oauth2',))
+    return external_auth.views.redirect_with_get(redirect_uri, request.GET, do_reverse=False)
 
 
 @never_cache
