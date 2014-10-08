@@ -343,14 +343,10 @@ def parse_query_params(strategy, response, *args, **kwargs):
         'is_register': auth_entry == AUTH_ENTRY_REGISTER,
     }
 
-
-def create_user_from_oauth(strategy, details, response, uid, is_dashboard=None, is_login=None, is_register=None, user=None, *args, **kwargs):
-    if 'is_new' in kwargs and kwargs['is_new'] is True:
-        user = User.objects.get(username=details['username'])
-        registration = Registration()
-        registration.register(user)
+def create_user_from_oauth(strategy, details, user, is_new, *args, **kwargs):
+    if is_new:
         profile = UserProfile(user=user)
-        profile.name = details['fullname']
+        profile.name = details.get('fullname')
 
         try:
             profile.save()
@@ -358,8 +354,6 @@ def create_user_from_oauth(strategy, details, response, uid, is_dashboard=None, 
             log.exception("UserProfile creation failed for user {id}.".format(id=user.id))
             raise
 
-        registration.activate()
-        registration.save()
         create_comments_service_user(user)
 
 
