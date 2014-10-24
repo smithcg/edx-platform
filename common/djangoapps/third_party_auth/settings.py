@@ -50,7 +50,7 @@ _FIELDS_STORED_IN_SESSION = ['auth_entry']
 _MIDDLEWARE_CLASSES = (
     'third_party_auth.middleware.ExceptionMiddleware',
 )
-_SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/dashboard'
+_SOCIAL_AUTH_LOGIN_REDIRECT_URL = '/'
 _SOCIAL_AUTH_NEW_ASSOCIATION_REDIRECT_URL = '/profile'
 _SOCIAL_AUTH_DISCONNECT_REDIRECT_URL = '/profile'
 
