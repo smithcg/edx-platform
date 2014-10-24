@@ -386,6 +386,7 @@ def register_user(request, extra_context=None):
         get = request.GET.copy()
 
         if 'course_id' in request.GET:
+            request.session['registration_course_id'] = request.GET.get('course_id')
             get.update({ 'next': reverse('about_course', kwargs={ 'course_id': unicode(request.GET.get('course_id')) }) })
 
         redirect_uri = reverse('social:begin', args=('portal-oauth2',))
