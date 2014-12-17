@@ -236,7 +236,8 @@ class S3ReportStore(ReportStore):
 
         conn = S3Connection(
             settings.AWS_ACCESS_KEY_ID,
-            settings.AWS_SECRET_ACCESS_KEY
+            settings.AWS_SECRET_ACCESS_KEY,
+            host=settings.AWS_S3_HOST
         )
         self.bucket = conn.get_bucket(bucket_name)
 
